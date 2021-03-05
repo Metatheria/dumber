@@ -123,6 +123,10 @@ void Tasks::Init() {
         cerr << "Error task create: " << strerror(-err) << endl << flush;
         exit(EXIT_FAILURE);
     }
+    if (err = rt_task_create(&th_getBatteryLevel, "th_getBatteryLevel", 0, PRIORITY_TMOVE, 0)) {
+        cerr << "Error task create: " << strerror(-err) << endl << flush;
+        exit(EXIT_FAILURE);
+    }
     cout << "Tasks created successfully" << endl << flush;
 
     /**************************************************************************************/
@@ -164,6 +168,10 @@ void Tasks::Run() {
         exit(EXIT_FAILURE);
     }
     if (err = rt_task_start(&th_move, (void(*)(void*)) & Tasks::MoveTask, this)) {
+        cerr << "Error task start: " << strerror(-err) << endl << flush;
+        exit(EXIT_FAILURE);
+    }
+    if (err = rt_task_start(&th_getBatteryLevel, (void(*)(void*)) & Tasks::GetBatteryLevel, this)) {
         cerr << "Error task start: " << strerror(-err) << endl << flush;
         exit(EXIT_FAILURE);
     }
@@ -415,3 +423,32 @@ Message *Tasks::ReadInQueue(RT_QUEUE *queue) {
     return msg;
 }
 
+void Tasks::GetBatteryLevel()
+{
+    int rs;
+    rt_sem_p(&sem_barrier, TM_INFINITE);
+    // Synchronization barrier (waiting that all tasks are started)
+
+    /**************************************************************************************/
+    /* The task starts here                                                        */
+    /**************************************************************************************/
+    rt_sem_p(&sem_serverOk, TM_INFINITE);
+    
+    rt_task_set_periodic(NULL, TM_NOW, 500000000);
+    while(1)
+    {
+        cout << "Battery update" << endl;
+        rt_task_wait_period(NULL);
+        rt_mutex_acquire(&mutex_robotStarted, TM_INFINITE);
+        rs = robotStarted;
+        rt_mutex_release(&mutex_robotStarted);
+        if (rs == 1) {
+            rt_mutex_acquire(&mutex_robot, TM_INFINITE);
+            Message* reply = robot.Write(ComRobot::GetBattery());
+            WriteInQueue(&q_messageToMon, reply);
+            rt_mutex_release(&mutex_robot);
+            
+        }
+        cout << endl << flush;
+    }
+}

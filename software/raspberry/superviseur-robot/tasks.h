@@ -76,6 +76,7 @@ private:
     RT_TASK th_openComRobot;
     RT_TASK th_startRobot;
     RT_TASK th_move;
+    RT_TASK th_getBatteryLevel;
     
     /**********************************************************************/
     /* Mutex                                                              */
@@ -148,7 +149,12 @@ private:
      * @return Message read
      */
     Message *ReadInQueue(RT_QUEUE *queue);
-
+    
+    /**
+     * Reads the battery level from the robot
+     * and sends it to the monitor
+     */
+    void GetBatteryLevel();
 };
 
 #endif // __TASKS_H__ 
